@@ -2,6 +2,7 @@ var searchParam = location.search;
 var info;//包含如下key {id,room,username,live_url,ws_key,headImage}
 var w; //websocket对象
 var msgPanel;//消息面板
+var members = {};//成员列表
 axios.get('/auth' + searchParam)
     .then(function (response) {
         let data = response.data;
@@ -41,6 +42,7 @@ function connect() {
     w = new WebSocket("ws://" + window.location.host + "/ws?auth=" + encodeURIComponent(info.ws_key));
     w.onopen = function () {
         console.log("已连接");
+        getMembers();
         flv_load();
     };
 
@@ -52,6 +54,27 @@ function connect() {
         var data = JSON.parse(message.data)
         resolveMsg(data)
     };
+}
+
+/**
+ * 获取
+ */
+function getMembers() {
+    axios.get('/members?room=' + info.room)
+        .then(function (response) {
+            let data = response.data;
+            if (data.code == 0) {
+                members = data.data;
+                for (var k in members) {
+                    createMember(k, members[k]);
+                }
+                showTotalMemberNum();
+            } else {
+                members = {}
+            }
+        }).catch(function (error) {
+        members = {}
+    });
 }
 
 /**
@@ -68,6 +91,40 @@ function resolveMsg(data) {
             userMsg(data)
         }
     }
+    actionHandler(data.id, data.username, data.action)
+}
+
+function actionHandler(id, name, action) {
+    if (action == "leave") {
+        delete members[id];
+        document.getElementById(id).remove();
+    } else if (action == "join") {
+        if (!members[id]) {
+            members[id] = name;
+            createMember(id, name);
+        }
+    }
+    showTotalMemberNum();
+}
+
+function showTotalMemberNum() {
+    document.querySelector(".total-num").innerText = document.querySelectorAll(".member-item").length;
+}
+
+function createMember(id, username) {
+    if (document.getElementById(id) != null) {
+        return;
+    }
+    var div = document.createElement("div");
+    div.setAttribute("id", id);
+    div.classList.add("member-item");
+    var image = document.createElement("img");
+    image.setAttribute("src", getDefaultHeadImage(username.substring(username.length - 1)));
+    div.appendChild(image);
+    var span = document.createElement("span");
+    span.innerText = username;
+    div.appendChild(span);
+    document.querySelector(".member-items").appendChild(div);
 }
 
 /**
@@ -197,23 +254,27 @@ var flvPlayer;
  * 打开直播画面
  * @param hasAudio
  */
-function flv_load(hasAudio=true){
-    if (flvjs.isSupported()) {
-        flv_destroy();
-        var videoElement = document.getElementById('videoElement');
-        flvPlayer = flvjs.createPlayer({
-            type: 'flv',
-            hasAudio: hasAudio,
-            isLive:true,
-            url: info.live_url
-        });
-        flvPlayer.attachMediaElement(videoElement);
-        flvPlayer.on(flvjs.Events.METADATA_ARRIVED,function(e){
-            if((!e.audiosamplerate || e.audiosamplerate === 0) && flvPlayer._mediaDataSource.hasAudio){
-                flv_load(false);
-            }
-        })
-        flvPlayer.load(); //加载
+function flv_load(hasAudio = true) {
+    try {
+        if (flvjs.isSupported()) {
+            flv_destroy();
+            var videoElement = document.getElementById('videoElement');
+            flvPlayer = flvjs.createPlayer({
+                type: 'flv',
+                hasAudio: hasAudio,
+                isLive: true,
+                url: info.live_url
+            });
+            flvPlayer.attachMediaElement(videoElement);
+            flvPlayer.on(flvjs.Events.METADATA_ARRIVED, function (e) {
+                if ((!e.audiosamplerate || e.audiosamplerate === 0) && flvPlayer._mediaDataSource.hasAudio) {
+                    flv_load(false);
+                }
+            })
+            flvPlayer.load(); //加载
+        }
+    } catch (e) {
+        console.error("打开直播失败", e)
     }
 }
 
@@ -227,5 +288,11 @@ function flv_destroy() {
         flvPlayer.detachMediaElement();
         flvPlayer.destroy();
         flvPlayer = null;
+    }
+}
+
+function keySend(event) {
+    if (event.ctrlKey && event.key == "Enter") {
+        send();
     }
 }

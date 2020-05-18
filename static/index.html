@@ -16,8 +16,13 @@
     <div class="chat">
         <div class="show"></div>
         <div class="say">
-            <textarea class="input-text" id="sayText"></textarea>
+            <textarea class="input-text" onkeydown="keySend(event);" id="sayText" placeholder="Ctrl + Enter 发送消息"></textarea>
             <button class="send-btn" onclick="send()">发送</button>
+        </div>
+    </div>
+    <div class="member-list">
+        <div>成员列表(<span class="total-num"></span>)</div>
+        <div class="member-items">
         </div>
     </div>
 </div>

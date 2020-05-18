@@ -27,6 +27,7 @@ func main() {
 
 	http.HandleFunc("/key", handleKey)
 	http.HandleFunc("/auth", handleAuth)
+	http.HandleFunc("/members", handleMembers)
 	http.HandleFunc("/ws", handleConnections)
 
 	log.Println("http server started on :8000")
@@ -35,13 +36,39 @@ func main() {
 		log.Fatal("ListenAndServe: ", err)
 	}
 }
+
+func handleMembers(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	room := r.Form.Get("room")
+	ret := new(common.Ret)
+	if room == "" {
+		ret.Code = -1
+		ret.Message = "错误的参数"
+	} else {
+		roomInfo, ok := rooms[room]
+		if (ok) {
+			clients := roomInfo.Clients
+			members := make(map[string]string)
+			for _, v := range clients {
+				members[v.Id] = v.Username
+			}
+			ret.Data = members
+		}
+	}
+	ret_json, _ := json.Marshal(ret)
+	io.WriteString(w, string(ret_json))
+}
+
+/**
+获取key
+ */
 func handleKey(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	room := r.Form.Get("room")
 	username := r.Form.Get("username")
 	//liveUrl := r.Form.Get("liveUrl")
 	ret := new(common.Ret)
-	if  room == "" || username == "" {
+	if room == "" || username == "" {
 		ret.Code = -1
 		ret.Message = "错误的key"
 	} else {
@@ -62,6 +89,9 @@ func handleKey(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, string(ret_json))
 }
 
+/**
+鉴权
+ */
 func handleAuth(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	key := r.Form.Get("key")
@@ -88,6 +118,9 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, string(ret_json))
 }
 
+/**
+解析key
+ */
 func parseKey(key string) (content common.Content, err error) {
 	var p common.Content
 	if key == "" {
@@ -112,6 +145,9 @@ func parseKey(key string) (content common.Content, err error) {
 	return p, nil
 }
 
+/**
+websocket连接
+ */
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -120,7 +156,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	key := r.Form.Get("auth")
 	p, err := parseKey(key)
-	if err != nil || p.Id == "" ||p.Room == "" || p.Username == "" || p.LiveUrl == "" {
+	if err != nil || p.Id == "" || p.Room == "" || p.Username == "" || p.LiveUrl == "" {
 		ws.Close()
 		return
 	}
@@ -130,44 +166,44 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		rooms[p.Room] = roomInfo
 		go handleMessages(roomInfo)
 	}
-	roomInfo.Clients[ws] = p.Username
-	/*if p.Id == "" {
-		p.Id = common.CreateRandomString(15)
-	}
+	roomInfo.Clients[ws] = p
 
-	initMsg := common.ConnectMessage(p)
-	err = ws.WriteJSON(initMsg)
-	if err != nil {
-		log.Printf("error: %v", err)
-	}*/
-
-	onlineMessage(roomInfo, p.Username)
+	onlineMessage(roomInfo, p.Username, p.Id)
 	go listenMessage(p.Id, p.Username, ws, roomInfo)
 }
 
 /**
 上线消息
  */
-func onlineMessage(roomInfo *common.RoomInfo, username string) {
+func onlineMessage(roomInfo *common.RoomInfo, username string, id string) {
 	msg := common.SystemMessage(username + "  进入了房间")
+	msg.Id = id
+	msg.Username = username
+	msg.Action = common.JOIN_ACTION
 	roomInfo.Broadcast <- msg
 }
 
 /**
 离线消息
  */
-func offlineMessage(roomInfo *common.RoomInfo, username string) {
+func offlineMessage(roomInfo *common.RoomInfo, username string, id string) {
 	msg := common.SystemMessage(username + "  离开了房间")
+	msg.Id = id
+	msg.Username = username
+	msg.Action = common.LEAVE_ACTION
 	roomInfo.Broadcast <- msg
 }
 
+/**
+监听客户端
+ */
 func listenMessage(id string, username string, ws *websocket.Conn, roomInfo *common.RoomInfo) {
 	for {
 		_, message, err := ws.ReadMessage()
 		if err != nil {
 			log.Printf("error: %v", err)
 			delete(roomInfo.Clients, ws)
-			offlineMessage(roomInfo, username)
+			offlineMessage(roomInfo, username, id)
 			break
 		}
 		msg := common.UserMessage(username, string(message))
@@ -176,6 +212,9 @@ func listenMessage(id string, username string, ws *websocket.Conn, roomInfo *com
 	}
 }
 
+/**
+监听房间消息
+ */
 func handleMessages(roomInfo *common.RoomInfo) {
 	for {
 		msg := <-roomInfo.Broadcast
@@ -184,9 +223,9 @@ func handleMessages(roomInfo *common.RoomInfo) {
 			if err != nil {
 				log.Printf("error: %v", err)
 				client.Close()
-				username := roomInfo.Clients[client]
+				p := roomInfo.Clients[client]
 				delete(roomInfo.Clients, client)
-				offlineMessage(roomInfo, username)
+				offlineMessage(roomInfo, p.Username, p.Id)
 			}
 		}
 	}

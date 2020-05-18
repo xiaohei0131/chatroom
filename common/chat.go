@@ -8,19 +8,20 @@ import (
 	"time"
 )
 
-//用户消息类型
-var userMsgType = "ut"
-//系统消息类型
-var systemMsgType = "st"
-//首次连接返回房间信息
-var initMsgType = "init"
+const (
+	USER_MSG_TYPE   = "ut"    //用户消息类型
+	SYSTEM_MSG_TYPE = "st"    //系统消息类型
+	SAY_ACTION      = "say"   //发言行为
+	LEAVE_ACTION    = "leave" //离开行为
+	JOIN_ACTION     = "join"  //加入行为
+)
 
 /**
 消息
  */
 type Message struct {
 	Id       string `json:"id"`
-	Role     string `json:"role"`
+	Action   string `json:"action"`
 	Username string `json:"username"`
 	Message  string `json:"message"`
 	Time     string `json:"time"`
@@ -35,7 +36,8 @@ func UserMessage(username string, message string) *Message {
 		Username: username,
 		Message:  message,
 		Time:     time.Now().Format("2006-01-02 15:04:05"),
-		Mtype:    userMsgType,
+		Mtype:    USER_MSG_TYPE,
+		Action:   SAY_ACTION,
 	}
 }
 
@@ -46,7 +48,7 @@ func SystemMessage(message string) *Message {
 	return &Message{
 		Message: message,
 		Time:    time.Now().Format("2006-01-02 15:04:05"),
-		Mtype:   systemMsgType,
+		Mtype:   SYSTEM_MSG_TYPE,
 	}
 }
 
@@ -68,13 +70,13 @@ func SystemMessage(message string) *Message {
 }*/
 
 type RoomInfo struct {
-	Clients   map[*websocket.Conn]string
+	Clients   map[*websocket.Conn]Content
 	Broadcast chan *Message
 }
 
 func NewRoom() *RoomInfo {
 	return &RoomInfo{
-		Clients:   make(map[*websocket.Conn]string),
+		Clients:   make(map[*websocket.Conn]Content),
 		Broadcast: make(chan *Message),
 	}
 }
@@ -87,7 +89,7 @@ type Content struct {
 	Room     string `json:"room"`
 	Username string `json:"username"`
 	LiveUrl  string `json:"live_url"`
-	WsKey       string `json:"ws_key"`
+	WsKey    string `json:"ws_key"`
 }
 
 type Ret struct {
