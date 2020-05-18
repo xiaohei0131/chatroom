@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <title>room</title>
+    <link rel="stylesheet" href="css/index.css"/>
+</head>
+<body>
+<div  id="error" class="center" style="display: none;">
+    参数错误
+</div>
+<div id="room" class="display-flex room" style="display: none;">
+    <div class="live"></div>
+    <div class="chat">
+        <div class="show"></div>
+        <div class="say">
+            <textarea class="input-text" id="sayText"></textarea>
+            <button class="send-btn" onclick="send()">发送</button>
+        </div>
+    </div>
+</div>
+<canvas id="canvas" height="40" width="40" style="display: none"></canvas>
+
+<script src="js/axios.min.js"></script>
+<script src="js/index.js"></script>
+</body>
+</html>
