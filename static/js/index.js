@@ -3,6 +3,7 @@ var info;//包含如下key {id,room,username,live_url,ws_key,headImage}
 var w; //websocket对象
 var msgPanel;//消息面板
 var members = {};//成员列表
+var showLive = false;//显示直播画面
 axios.get('/auth' + searchParam)
     .then(function (response) {
         let data = response.data;
@@ -10,6 +11,7 @@ axios.get('/auth' + searchParam)
             showRoom();
             info = JSON.parse(data.data);
             info.headImage = getDefaultHeadImage(info.username.substring(info.username.length - 1));
+            document.querySelector(".roomInfo").innerHTML = info.room + '(<span class="total-num1"></span>) <a class="live-switch" href="javascript:;" onclick="switchLive()">打开视频</a>';
             msgPanel = document.getElementsByClassName("show")[0];
             connect();
         } else {
@@ -18,6 +20,20 @@ axios.get('/auth' + searchParam)
     }).catch(function (error) {
     showError();
 });
+
+function switchLive() {
+    if(showLive){//关闭视频
+        showLive = false;
+        flv_destroy();
+        document.getElementById("room").classList.add("no-video");
+        document.querySelector(".live-switch").innerHTML="打开视频";
+    }else{//打开视频
+        showLive = true;
+        flv_load();
+        document.getElementById("room").classList.remove("no-video");
+        document.querySelector(".live-switch").innerHTML="关闭视频";
+    }
+}
 
 /**
  * 显示错误
@@ -43,7 +59,9 @@ function connect() {
     w.onopen = function () {
         console.log("已连接");
         getMembers();
-        flv_load();
+        if(showLive){
+            flv_load();
+        }
     };
 
     w.onclose = function () {
@@ -108,7 +126,9 @@ function actionHandler(id, name, action) {
 }
 
 function showTotalMemberNum() {
-    document.querySelector(".total-num").innerText = document.querySelectorAll(".member-item").length;
+    let total = document.querySelectorAll(".member-item").length;
+    document.querySelector(".total-num").innerText = total;
+    document.querySelector(".total-num1").innerText = total;
 }
 
 function createMember(id, username) {
@@ -174,7 +194,8 @@ function userMsg(data) {
     var div1 = document.createElement("div");
     var div2 = document.createElement("div");
     div2.classList.add("say-name");
-    div2.innerText = data.username + "  " + data.time;
+    // div2.innerText = data.username + "  " + data.time;
+    div2.innerText = data.username;
     div1.appendChild(div2);
     var spanMsg = document.createElement("div");
     spanMsg.classList.add("bubble-l");
@@ -199,7 +220,8 @@ function selfMsg(data) {
     var div1 = document.createElement("div");
     var div2 = document.createElement("div");
     div2.classList.add("say-name");
-    div2.innerText = data.time + "  " + data.username;
+    // div2.innerText = data.time + "  " + data.username;
+    div2.innerText = data.username;
     div1.appendChild(div2);
 
     var div3 = document.createElement("div");
@@ -272,6 +294,7 @@ function flv_load(hasAudio = true) {
                 }
             })
             flvPlayer.load(); //加载
+            showLive = true;
         }
     } catch (e) {
         console.error("打开直播失败", e)
@@ -289,6 +312,7 @@ function flv_destroy() {
         flvPlayer.destroy();
         flvPlayer = null;
     }
+    showLive = false;
 }
 
 function keySend(event) {
