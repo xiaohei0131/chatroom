@@ -72,6 +72,7 @@ func SystemMessage(message string) *Message {
 type RoomInfo struct {
 	Clients   map[*websocket.Conn]Content
 	Broadcast chan *Message
+	Roomname  string
 }
 
 func NewRoom() *RoomInfo {

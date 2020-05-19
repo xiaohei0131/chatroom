@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <title>start</title>
+    <style>
+        .center {
+            text-align: center;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .error {
+            color: red;
+        }
+
+        input {
+            outline-style: none;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 13px 14px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: "Microsoft soft";
+        }
+
+        input:focus {
+            border-color: #66afe9;
+            outline: 0;
+            -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 8px rgba(102, 175, 233, .6);
+            box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 8px rgba(102, 175, 233, .6)
+        }
+        .lb{
+            width: 130px;
+            text-align: right;
+            display: inline-block;
+        }
+        .rp{
+            width: 300px;
+        }
+        .row{
+            margin-top: 15px;
+        }
+        button {
+            background-color: #4CAF50; /* Green */
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin-left: 130px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div class="center">
+    <label class="error" style="display: none;">请求失败</label>
+    <div class="row">
+        <label class="lb">请输入房间名：</label>
+        <input id="room" type="text" class="rp" placeholder="若不存在则自动创建">
+    </div>
+    <div class="row">
+        <label class="lb">请输入姓名：</label>
+        <input id="username" class="rp" type="text" placeholder="">
+    </div>
+    <div class="row">
+        <button type="button" onclick="enter()">进入</button>
+    </div>
+</div>
+<script src="js/axios.min.js"></script>
+<script>
+    function enter() {
+        var room = document.getElementById("room").value;
+        var username = document.getElementById("username").value;
+        document.querySelector(".error").style.display = "none";
+        axios.get('/key', {
+            params: {
+                room: room,
+                username: username
+            }
+        })
+            .then(function (response) {
+                let data = response.data;
+                if (data.code == 0) {
+                    window.location.href = "/?key=" + encodeURIComponent(data.data);
+                } else {
+                    document.querySelector(".error").style.display = "block";
+                }
+            }).catch(function (error) {
+            document.querySelector(".error").style.display = "block";
+        });
+    }
+</script>
+</body>
+</html>

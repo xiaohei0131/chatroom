@@ -20,6 +20,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+//存放所有房间
 var rooms = make(map[string]*common.RoomInfo)
 
 func main() {
@@ -37,6 +38,9 @@ func main() {
 	}
 }
 
+/**
+获取房间成员列表
+ */
 func handleMembers(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	room := r.Form.Get("room")
@@ -163,6 +167,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	roomInfo, ok := rooms[p.Room]
 	if (!ok) {
 		roomInfo = common.NewRoom()
+		roomInfo.Roomname = p.Room
 		rooms[p.Room] = roomInfo
 		go handleMessages(roomInfo)
 	}
@@ -227,6 +232,10 @@ func handleMessages(roomInfo *common.RoomInfo) {
 				delete(roomInfo.Clients, client)
 				offlineMessage(roomInfo, p.Username, p.Id)
 			}
+		}
+		if len(roomInfo.Clients) == 0{
+			//房间里面没人的时候删除房间信息
+			delete(rooms, roomInfo.Roomname)
 		}
 	}
 }
