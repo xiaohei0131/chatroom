@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"io"
@@ -24,6 +25,9 @@ var upgrader = websocket.Upgrader{
 var rooms = make(map[string]*common.RoomInfo)
 
 func main() {
+	var port string
+	flag.StringVar(&port, "port", "8000", "端口号，默认值 8000")
+	flag.Parse()
 	http.Handle("/", http.FileServer(http.Dir("static")))
 
 	http.HandleFunc("/key", handleKey)
@@ -31,8 +35,8 @@ func main() {
 	http.HandleFunc("/members", handleMembers)
 	http.HandleFunc("/ws", handleConnections)
 
-	log.Println("http server started on :8000")
-	err := http.ListenAndServe(":8000", nil)
+	log.Println("http server started on :", port)
+	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
@@ -233,7 +237,7 @@ func handleMessages(roomInfo *common.RoomInfo) {
 				offlineMessage(roomInfo, p.Username, p.Id)
 			}
 		}
-		if len(roomInfo.Clients) == 0{
+		if len(roomInfo.Clients) == 0 {
 			//房间里面没人的时候删除房间信息
 			delete(rooms, roomInfo.Roomname)
 		}
